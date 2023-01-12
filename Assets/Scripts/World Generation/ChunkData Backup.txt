@@ -1,0 +1,78 @@
+public byte borderID; // ID between 0 and 2 depending on the plac within the 3 chunk transition
+    public byte biomeBorderDirection; // 0 for no border, 1 for x border, 2 for y border, 3 for both
+    public Vector2Int[] lerpPositions;
+
+    public Vector3Int pos;
+    public Vector3Int globalPos;
+
+    public int lerpBias;
+    public int threadNo;
+
+    public void checkBiomeBorder(World world)
+    {
+        lerpPositions = new Vector2Int[2] { Vector2Int.zero, Vector2Int.zero };
+
+        if (scanChunkNeighbours(world, new Vector2Int(globalPos.x - VoxelData.chunkWidth - 1, globalPos.z), new Vector2Int(globalPos.x + VoxelData.chunkWidth + VoxelData.chunkWidth, globalPos.z)))
+        {
+            if (scanChunk(world, new Vector2Int(globalPos.x, globalPos.z)))
+            {
+                borderID = 1; lerpBias = 0;
+                findBias(world);
+                lerpPositions[0] += new Vector2Int(-1, 0); lerpPositions[1] += new Vector2Int(VoxelData.chunkWidth, 0);
+                biomeBorderDirection += 1;
+            }
+            else if (scanChunk(world, new Vector2Int(globalPos.x - VoxelData.chunkWidth, globalPos.z)))
+            {
+                borderID = 0;
+            }
+            else
+                borderID = 2;
+        }
+
+        else if (scanChunkNeighbours(world, new Vector2Int(globalPos.x, globalPos.z - VoxelData.chunkWidth - 1), new Vector2Int(globalPos.x, globalPos.z + VoxelData.chunkWidth + VoxelData.chunkWidth)))
+        {
+            if (scanChunk(world, new Vector2Int(globalPos.x, globalPos.z)))
+            {
+                borderID = 1;
+                lerpPositions[0] += new Vector2Int(0, -1); lerpPositions[1] += new Vector2Int(0, VoxelData.chunkWidth);
+                biomeBorderDirection += 2;
+            }
+        }
+    }
+
+    public bool scanChunkNeighbours(World world, Vector2Int pos1, Vector2Int pos2)
+    {
+        if (world.getBiome(pos1) != world.getBiome(pos2))
+            return true;
+        else
+            return false;
+    }
+
+    public void findBias(World world)
+    {
+        Vector2Int[] closestBorderVectors = new Vector2Int[4] { new Vector2Int(globalPos.x + VoxelData.chunkWidth, globalPos.z + VoxelData.chunkWidth),
+                    new Vector2Int(globalPos.x + VoxelData.chunkWidth, globalPos.z - VoxelData.chunkWidth), new Vector2Int(globalPos.x - VoxelData.chunkWidth, globalPos.z + VoxelData.chunkWidth),
+                    new Vector2Int(globalPos.x - VoxelData.chunkWidth, globalPos.z - VoxelData.chunkWidth) };
+
+        for (int i = 0; i < closestBorderVectors.Length; i++)
+        {
+            if (scanChunk(world, closestBorderVectors[i]))
+                lerpBias += 8;
+        }
+    }
+
+    public bool scanChunk(World world, Vector2Int worldPosition)
+    {
+        Vector2Int[] corners = new Vector2Int[5]{worldPosition, worldPosition + new Vector2Int(VoxelData.chunkWidth - 1, 0),
+            worldPosition + new Vector2Int(0, VoxelData.chunkWidth - 1), worldPosition + new Vector2Int(VoxelData.chunkWidth - 1, VoxelData.chunkWidth - 1),
+            worldPosition + new Vector2Int(VoxelData.chunkWidth / 2, VoxelData.chunkWidth / 2) };
+
+        for (int u = 0; u < corners.Length; u++)
+            for (int v = u + 1; v < corners.Length; v++)
+                if (world.getBiome(corners[u]) != world.getBiome(corners[v]))
+                {
+                    return true;
+                }
+
+        return false;
+    }
